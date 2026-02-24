@@ -1,0 +1,45 @@
+% feature selection
+clc
+clear
+dataSetsName = ...
+{
+    'Flags','SJAFFE','Emotions',...
+    'Birds','GnegativeGO','Natural_Scene',...
+    'Yeast_cold','Yeast_elu','Yeast_spo',...
+    'SBU_3DFE','Movie','Human_Gene','M2B','raf-ml','scut_fbp','fbp5500'
+};
+
+ccc = [10,1,0,0.1,0.01,0.001,0.0001];
+
+global features labels G c1 c2 c3 c4 FFMI FLMI
+dName = dataSetsName{1};
+
+fprintf('[%s]\n',dName);
+load(['dataSets/',dName,'_LDL.mat']);
+features = double(features);
+labels = double(labels);
+features = (features-min(features))./(max(features)-min(features));
+labels(labels==0) = realmin('double');
+FFMI=computeFeatureFeatureMI(features);
+FLMI=computeFeatureLabelMI(features,labels);
+G = LSTrainXY(labels,10);
+c1=1;
+c2=1;
+c3=1;
+c4=1;
+seed=2021062003;
+
+
+% 4.basic variable
+d = size(features,2);
+c = size(labels,2);
+% 5.training
+item = zeros(d,c)+0.1;
+options = optimoptions(@fminunc,...
+                        'Display','iter','Algorithm','quasi-newton','MaxIterations',10000,...
+                        'FiniteDifferenceStepSize',1e-20,'SpecifyObjectiveGradient',true,'TolX',1e-12,'GradObj','on');
+weights = fminunc(@process, item,options);
+[~,index] = sort(sqrt(sum(weights.*weights,2)),'descend');
+% 6.validate the performance of feature subsets
+metric = tenFoldResult(features,labels,index,seed)
+metric = round(metric,4)
